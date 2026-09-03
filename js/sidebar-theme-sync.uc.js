@@ -2,7 +2,7 @@
 // @name           sidebar-theme-sync.uc.js
 // @description    Syncs Zen default sidebar text colors with system appearance.
 // @author         876380496
-// @version        1.8.0
+// @version        1.9.0
 // @include        main
 // @grant          none
 // ==/UserScript==
@@ -28,6 +28,7 @@
     "--tab-selected-textcolor",
     "--toolbar-color-scheme",
     "--tab-selected-color-scheme",
+    "--zen-sidebar-sync-foreground",
     "color",
     "color-scheme",
     "background",
@@ -96,22 +97,13 @@
     return window.gZenWorkspaces?.getActiveWorkspace?.() || null;
   }
 
-  function isAutomaticWorkspaceTheme() {
-    const workspace = activeWorkspace();
-    const colors = workspace?.theme?.gradientColors;
-    if (Array.isArray(colors)) {
-      return colors.length === 0;
-    }
-    return root.getAttribute("zen-default-theme") === "true";
-  }
-
   function shouldSyncSidebar() {
-    // Custom gradients have their own scheme-aware foreground and background
-    // calculation in ZenGradientGenerator. Leave their styles untouched.
+    // Backgrounds remain entirely owned by Zen, including custom gradients.
+    // Foreground colors still need synchronization in every normal window:
+    // Zen can leave the old inline --toolbox-textcolor after a scheme change.
     return (
       !root.hasAttribute("zen-unsynced-window") &&
-      !root.hasAttribute("zen-private-window") &&
-      isAutomaticWorkspaceTheme()
+      !root.hasAttribute("zen-private-window")
     );
   }
 
@@ -133,7 +125,7 @@
       foreground: dark
         ? "rgba(255, 255, 255, 0.9)"
         : "rgb(32, 33, 36)",
-      source: "zen-default-theme",
+      source: "zen-window-scheme",
       windowScheme: Services.prefs.getIntPref("zen.view.window.scheme", 2),
     };
   }
@@ -252,7 +244,7 @@
       if (serialized !== lastState) {
         lastState = serialized;
         writeLog(
-          wasMarked ? "skip-special-window" : "skip-custom-theme",
+          "skip-special-window",
           state
         );
       }
@@ -264,8 +256,9 @@
     const colorScheme = currentTheme.dark ? "dark" : "light";
     root.setAttribute(marker, colorScheme);
 
-    // Keep Zen's own light-dark() background formulas intact. The Mod only
-    // fixes stale foreground values and color-scheme for the default theme.
+    // Keep Zen's own light-dark() and gradient background formulas intact.
+    // The Mod only fixes stale foreground values and color-scheme.
+    setImportant(root, "--zen-sidebar-sync-foreground", foreground);
     for (const element of [
       root,
       document.querySelector("#browser"),

@@ -4,13 +4,12 @@
  * Zen updates the default sidebar background through color-scheme/light-dark,
  * but can leave --toolbox-textcolor and --tab-selected-textcolor as stale
  * inline values on the workspace. This stylesheet overrides those values
- * only for the default workspace theme.
+ * for normal themes while leaving Zen's background layers untouched.
  *
  * The stylesheet is intentionally not wrapped in -moz-pref(). Disabling the
  * Mod in Sine removes the stylesheet entirely, and avoiding a second pref
  * condition makes this workaround reliable as a user stylesheet. Custom
- * gradient themes are left to Zen's own theme renderer; the runtime script
- * asks Zen to refresh them when the active window scheme changes.
+ * gradient backgrounds are left to Zen's own theme renderer.
  */
 
 /* Light system appearance. */
@@ -27,7 +26,8 @@
 
 /*
  * The custom properties are important: Zen writes the old values directly on
- * <zen-workspace>, so changing only the root's color is not sufficient.
+ * <zen-workspace>, so changing only the root's color is not sufficient. The
+ * runtime marker is set by the script for both Automatic and custom themes.
  */
 :root[zen-default-theme="true"] zen-workspace,
 :root[zen-default-theme="true"] #zen-sidebar-top-buttons,
