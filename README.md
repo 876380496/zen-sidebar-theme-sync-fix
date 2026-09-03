@@ -1,16 +1,15 @@
-# Zen Automatic Sidebar Text Sync Fix
+# Zen Sidebar Text Color Sync Fix
 
-Fixes stale sidebar and tab text colors after macOS switches between light and dark appearance.
+Changes only sidebar/tab text and icon colors when macOS switches between light and dark appearance.
 
 ## What it changes
 
-Zen's default workspace background uses declarative `light-dark()` colors, but the foreground color can remain as an old inline `--toolbox-textcolor` value on `zen-workspace`. This mod overrides that value only while the workspace is using Zen's default/automatic theme:
+The runtime script listens only to macOS's `(prefers-color-scheme: dark)` media query and changes the rendered sidebar/tab text and icon colors:
 
-- light appearance: dark text
-- dark appearance: light text
-- private and unsynced windows: left unchanged
+- light appearance: dark text/icons
+- dark appearance: light text/icons
 
-The mod uses CSS plus a small Sine `.uc.js` runtime script. The script runs only in Zen's main browser window and does not modify browser application files. The runtime synchronizer updates sidebar/tab foreground colors and the light/dark `color-scheme` on normal windows so Zen's `light-dark()` and selected-tab rules use the active window scheme. It never writes the URL bar or workspace-button background layers, so custom gradient backgrounds remain controlled by Zen's own theme renderer.
+It does not modify Zen theme variables or background layers.
 
 ## Installation
 
@@ -28,6 +27,6 @@ For local testing, Zen's current importer sends imported IDs to the official the
 
 ## Limitations
 
-The runtime synchronizer targets normal Zen windows and deliberately ignores private and unsynced windows. It synchronizes foreground colors for both Automatic and custom-gradient themes, while leaving all background layers untouched. It uses `zen.view.window.scheme` when selecting the active light/dark scheme and watches for system, preference, DOM, and tab changes.
+The script intentionally follows the macOS appearance query. It does not change Zen's manually selected light/dark window scheme, workspace gradient, URL bar background, workspace-button background, or any other theme variable.
 
 Because the runtime script is not from the official Sine store, Sine may require **Settings → Sine → Allow unsafe JavaScript** to be enabled. Enable it only for mods you trust, then restart Zen.
