@@ -2,7 +2,7 @@
 // @name           sidebar-theme-sync.uc.js
 // @description    Syncs Zen default sidebar text colors with system appearance.
 // @author         876380496
-// @version        1.2.0
+// @version        1.3.0
 // @include        main
 // @grant          none
 // ==/UserScript==
@@ -10,9 +10,17 @@
 (function () {
   "use strict";
 
+  const MOD_ID = "8154795f-86ee-40c5-b980-2c843d6df65f";
   const root = document.documentElement;
   const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const marker = "zen-sidebar-theme-sync-fix";
+  const logPath = PathUtils.join(
+    PathUtils.profileDir,
+    "chrome",
+    "sine-mods",
+    MOD_ID,
+    "sidebar-theme-sync.log"
+  );
   const managedProperties = [
     "--toolbox-textcolor",
     "--toolbar-color",
@@ -22,6 +30,59 @@
   ];
   const originals = new WeakMap();
   let updateQueued = false;
+  let logChain = Promise.resolve();
+  let lastState = "";
+
+  function attributes(element) {
+    return Object.fromEntries(
+      [...element.attributes].map(attribute => [attribute.name, attribute.value])
+    );
+  }
+
+  function describe(element) {
+    if (!element) {
+      return null;
+    }
+    const computed = getComputedStyle(element);
+    return {
+      tag: element.localName,
+      id: element.id || "",
+      className: typeof element.className === "string" ? element.className : "",
+      inline: Object.fromEntries(
+        managedProperties.map(property => [
+          property,
+          {
+            value: element.style.getPropertyValue(property),
+            priority: element.style.getPropertyPriority(property),
+          },
+        ])
+      ),
+      computed: Object.fromEntries(
+        managedProperties.map(property => [property, computed.getPropertyValue(property)])
+      ),
+      computedColor: computed.color,
+      computedFill: computed.fill,
+      colorScheme: computed.colorScheme,
+    };
+  }
+
+  function writeLog(event, data = {}) {
+    const line = `${new Date().toISOString()} ${event} ${JSON.stringify(data)}\n`;
+    console.log(`[SidebarThemeSyncFix] ${line.trim()}`);
+
+    logChain = logChain
+      .then(async () => {
+        try {
+          await IOUtils.writeUTF8(logPath, line, { mode: "appendOrCreate" });
+        } catch (error) {
+          console.error(
+            `[SidebarThemeSyncFix] Cannot write ${logPath}:`,
+            error
+          );
+        }
+      })
+      .catch(error => console.error("[SidebarThemeSyncFix] Log queue error:", error));
+  }
 
   function isDefaultWorkspaceTheme() {
     if (root.getAttribute("zen-default-theme") === "true") {
@@ -29,7 +90,7 @@
     }
 
     // During some startup/theme-switch paths Zen does not expose
-    // zen-default-theme. Explicit workspace gradients do expose
+    // zen-default-theme. Explicit workspace gradients expose
     // zen-should-be-dark-mode, so the absence of both is the safe fallback.
     return (
       !root.hasAttribute("zen-should-be-dark-mode") &&
@@ -92,11 +153,40 @@
     root.removeAttribute(marker);
   }
 
-  function applyForeground() {
+  function stateSnapshot(reason) {
+    const workspaces = [...document.querySelectorAll("zen-workspace")];
+    const tabs = [...document.querySelectorAll("zen-workspace .tabbrowser-tab")];
+    const state = {
+      reason,
+      href: location.href,
+      readyState: document.readyState,
+      darkMode: darkModeQuery.matches,
+      mediaLight: window.matchMedia("(prefers-color-scheme: light)").matches,
+      rootAttributes: attributes(root),
+      rootComputed: describe(root),
+      workspaceCount: workspaces.length,
+      tabCount: tabs.length,
+      topToolbar: describe(document.querySelector("#zen-sidebar-top-buttons")),
+      footToolbar: describe(document.querySelector("#zen-sidebar-foot-buttons")),
+      workspace: describe(workspaces.find(workspace => workspace.hasAttribute("active")) || workspaces[0]),
+      selectedTab: describe(tabs.find(tab => tab.hasAttribute("selected"))),
+      unsafeJS: Services.prefs.getBoolPref("sine.allow-unsafe-js", false),
+      logPath,
+    };
+    return state;
+  }
+
+  function applyForeground(reason = "update") {
     updateQueued = false;
 
     if (!isDefaultWorkspaceTheme()) {
       clearAppliedStyles();
+      const state = stateSnapshot(`${reason}:skipped-explicit-theme`);
+      const serialized = JSON.stringify(state);
+      if (serialized !== lastState) {
+        lastState = serialized;
+        writeLog("skip-explicit-theme", state);
+      }
       return;
     }
 
@@ -148,21 +238,52 @@
         setImportant(element, "fill", foreground);
       }
     }
+
+    const state = stateSnapshot(`${reason}:applied`);
+    state.foreground = foreground;
+    const serialized = JSON.stringify(state);
+    if (serialized !== lastState) {
+      lastState = serialized;
+      writeLog("apply", state);
+    }
   }
 
-  function scheduleUpdate() {
+  function scheduleUpdate(reason = "scheduled") {
     if (updateQueued) {
       return;
     }
     updateQueued = true;
-    window.requestAnimationFrame(applyForeground);
+    window.requestAnimationFrame(() => applyForeground(reason));
   }
 
-  darkModeQuery.addEventListener("change", scheduleUpdate);
-  root.addEventListener("TabOpen", scheduleUpdate, true);
-  root.addEventListener("TabSelect", scheduleUpdate, true);
+  const onSystemColorSchemeChange = () =>
+    scheduleUpdate("system-color-scheme-change");
+  const onTabOpen = () => scheduleUpdate("tab-open");
+  const onTabSelect = () => scheduleUpdate("tab-select");
 
-  const observer = new MutationObserver(scheduleUpdate);
+  writeLog("script-start", stateSnapshot("script-start"));
+
+  darkModeQuery.addEventListener("change", onSystemColorSchemeChange);
+  root.addEventListener("TabOpen", onTabOpen, true);
+  root.addEventListener("TabSelect", onTabSelect, true);
+
+  const observer = new MutationObserver(mutations => {
+    const changed = mutations.some(mutation => {
+      return (
+        mutation.type === "childList" ||
+        (mutation.type === "attributes" &&
+          [
+            "zen-default-theme",
+            "zen-should-be-dark-mode",
+            "zen-unsynced-window",
+            "zen-private-window",
+          ].includes(mutation.attributeName))
+      );
+    });
+    if (changed) {
+      scheduleUpdate("dom-theme-or-tab-change");
+    }
+  });
   observer.observe(root, {
     childList: true,
     subtree: true,
@@ -176,21 +297,22 @@
   });
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scheduleUpdate, {
+    document.addEventListener("DOMContentLoaded", () => scheduleUpdate("DOMContentLoaded"), {
       once: true,
     });
   } else {
-    scheduleUpdate();
+    scheduleUpdate("initial");
   }
 
   window.addEventListener(
     "unload",
     () => {
-      darkModeQuery.removeEventListener("change", scheduleUpdate);
-      root.removeEventListener("TabOpen", scheduleUpdate, true);
-      root.removeEventListener("TabSelect", scheduleUpdate, true);
+      darkModeQuery.removeEventListener("change", onSystemColorSchemeChange);
+      root.removeEventListener("TabOpen", onTabOpen, true);
+      root.removeEventListener("TabSelect", onTabSelect, true);
       observer.disconnect();
       clearAppliedStyles();
+      writeLog("script-unload");
     },
     { once: true }
   );
