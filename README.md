@@ -8,7 +8,7 @@ Zen's default workspace background uses declarative `light-dark()` colors, but t
 
 - light appearance: dark text
 - dark appearance: light text
-- custom workspace gradients: left unchanged
+- private and unsynced windows: left unchanged
 
 The mod uses CSS plus a small Sine `.uc.js` runtime script. The script runs only in Zen's main browser window and does not modify browser application files.
 
@@ -28,6 +28,6 @@ For local testing, Zen's current importer sends imported IDs to the official the
 
 ## Limitations
 
-This mod intentionally targets only `:root[zen-default-theme="true"]`. Its runtime fallback also handles the short startup interval before Zen adds that marker. It does not try to choose a foreground color for arbitrary user gradients. That calculation belongs in Zen's theme engine and should ultimately be fixed in `ZenGradientGenerator.mjs` / `ZenSpace.mjs`.
+The runtime synchronizer targets normal Zen windows. It deliberately ignores private and unsynced windows, where Zen intentionally uses fixed colors. It uses the current system appearance as the foreground source because Zen's `zen-should-be-dark-mode` marker can remain stale during macOS theme changes.
 
 Because the runtime script is not from the official Sine store, Sine may require **Settings → Sine → Allow unsafe JavaScript** to be enabled. Enable it only for mods you trust, then restart Zen.

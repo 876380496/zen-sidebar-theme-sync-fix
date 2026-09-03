@@ -2,7 +2,7 @@
 // @name           sidebar-theme-sync.uc.js
 // @description    Syncs Zen default sidebar text colors with system appearance.
 // @author         876380496
-// @version        1.3.0
+// @version        1.4.0
 // @include        main
 // @grant          none
 // ==/UserScript==
@@ -84,16 +84,14 @@
       .catch(error => console.error("[SidebarThemeSyncFix] Log queue error:", error));
   }
 
-  function isDefaultWorkspaceTheme() {
-    if (root.getAttribute("zen-default-theme") === "true") {
-      return true;
-    }
-
-    // During some startup/theme-switch paths Zen does not expose
-    // zen-default-theme. Explicit workspace gradients expose
-    // zen-should-be-dark-mode, so the absence of both is the safe fallback.
+  function shouldSyncSidebar() {
+    // zen-should-be-dark-mode is not a reliable signal that the user has a
+    // custom workspace theme. Zen can leave it set while the system theme
+    // changes, which is the exact case this Mod fixes.
+    //
+    // Do not touch private or unsynced windows, where Zen intentionally uses
+    // a fixed foreground color.
     return (
-      !root.hasAttribute("zen-should-be-dark-mode") &&
       !root.hasAttribute("zen-unsynced-window") &&
       !root.hasAttribute("zen-private-window")
     );
@@ -179,13 +177,13 @@
   function applyForeground(reason = "update") {
     updateQueued = false;
 
-    if (!isDefaultWorkspaceTheme()) {
+    if (!shouldSyncSidebar()) {
       clearAppliedStyles();
-      const state = stateSnapshot(`${reason}:skipped-explicit-theme`);
+      const state = stateSnapshot(`${reason}:skipped-special-window`);
       const serialized = JSON.stringify(state);
       if (serialized !== lastState) {
         lastState = serialized;
-        writeLog("skip-explicit-theme", state);
+        writeLog("skip-special-window", state);
       }
       return;
     }
