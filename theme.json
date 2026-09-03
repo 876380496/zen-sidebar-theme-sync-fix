@@ -1,0 +1,14 @@
+{
+  "id": "8154795f-86ee-40c5-b980-2c843d6df65f",
+  "name": "Sidebar Theme Sync Fix",
+  "description": "Fixes sidebar text color after macOS light/dark theme changes.",
+  "homepage": "https://github.com/876380496/zen-sidebar-theme-sync-fix",
+  "style": "https://raw.githubusercontent.com/876380496/zen-sidebar-theme-sync-fix/main/chrome.css",
+  "readme": "https://raw.githubusercontent.com/876380496/zen-sidebar-theme-sync-fix/main/README.md",
+  "preferences": "https://raw.githubusercontent.com/876380496/zen-sidebar-theme-sync-fix/main/preferences.json",
+  "author": "876380496",
+  "version": "1.0.0",
+  "tags": ["sidebar", "theme", "macos", "dark-mode", "accessibility"],
+  "createdAt": "2026-09-03",
+  "updatedAt": "2026-09-03"
+}

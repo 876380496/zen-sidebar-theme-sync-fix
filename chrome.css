@@ -1,0 +1,41 @@
+/*
+ * Zen Automatic Sidebar Text Sync Fix
+ *
+ * The default workspace theme gets its background from light-dark() and
+ * color-scheme, while --toolbox-textcolor may remain as a stale inline value
+ * on <zen-workspace> after a system theme change. Keep the text colors
+ * declarative for the default/automatic workspace so they recalculate with
+ * Zen's effective light/dark color scheme.
+ */
+
+@media (-moz-pref("zen.sidebar_theme_sync_fix.enabled")) {
+  :root[zen-default-theme="true"] zen-workspace,
+  :root[zen-default-theme="true"] #zen-sidebar-top-buttons,
+  :root[zen-default-theme="true"] #zen-sidebar-foot-buttons {
+    --toolbox-textcolor: light-dark(
+      rgba(32, 33, 36, 0.9),
+      rgba(255, 255, 255, 0.9)
+    ) !important;
+    --toolbar-color: var(--toolbox-textcolor) !important;
+    --tab-selected-textcolor: var(--toolbox-textcolor) !important;
+    color: var(--toolbox-textcolor) !important;
+  }
+
+  /* Tab labels and workspace labels can have their own Firefox theme rules. */
+  :root[zen-default-theme="true"] zen-workspace .tab-text,
+  :root[zen-default-theme="true"] zen-workspace .tab-label,
+  :root[zen-default-theme="true"] zen-workspace .zen-tab-sublabel,
+  :root[zen-default-theme="true"] zen-workspace .zen-current-workspace-indicator-name,
+  :root[zen-default-theme="true"] #zen-sidebar-top-buttons .toolbarbutton-text,
+  :root[zen-default-theme="true"] #zen-sidebar-foot-buttons .toolbarbutton-text {
+    color: var(--toolbox-textcolor) !important;
+  }
+
+  /* Keep toolbar icons aligned with the corrected foreground color. */
+  :root[zen-default-theme="true"] #zen-sidebar-top-buttons toolbarbutton,
+  :root[zen-default-theme="true"] #zen-sidebar-foot-buttons toolbarbutton,
+  :root[zen-default-theme="true"] zen-workspace toolbarbutton {
+    color: var(--toolbox-textcolor) !important;
+    fill: var(--toolbox-textcolor) !important;
+  }
+}

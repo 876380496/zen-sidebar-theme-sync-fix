@@ -1,0 +1,8 @@
+[
+  {
+    "property": "zen.sidebar_theme_sync_fix.enabled",
+    "label": "Enable automatic sidebar text color sync",
+    "type": "checkbox",
+    "defaultValue": true
+  }
+]
