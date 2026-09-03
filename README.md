@@ -10,7 +10,7 @@ Zen's default workspace background uses declarative `light-dark()` colors, but t
 - dark appearance: light text
 - custom workspace gradients: left unchanged
 
-The mod is CSS-only and does not modify browser files.
+The mod uses CSS plus a small Sine `.uc.js` runtime script. The script runs only in Zen's main browser window and does not modify browser application files.
 
 ## Installation
 
@@ -22,10 +22,12 @@ For local testing, Zen's current importer sends imported IDs to the official the
 
 1. Open `about:support` and open the active **Profile Folder**.
 2. Create `chrome/zen-themes/8154795f-86ee-40c5-b980-2c843d6df65f/` (the folder name must equal the mod ID).
-3. Copy `chrome.css` and `preferences.json` into that folder.
+3. Copy `chrome.css`, `preferences.json`, and the `js/` directory into that folder.
 4. Merge the object in `local-zen-themes-entry.json` into the profile's `zen-themes.json` object. Do not add it as an array item.
 5. Fully restart Zen, then enable the mod under **Settings → Mods**.
 
 ## Limitations
 
-This mod intentionally targets only `:root[zen-default-theme="true"]`. It does not try to choose a foreground color for arbitrary user gradients. That calculation belongs in Zen's theme engine and should ultimately be fixed in `ZenGradientGenerator.mjs` / `ZenSpace.mjs`.
+This mod intentionally targets only `:root[zen-default-theme="true"]`. Its runtime fallback also handles the short startup interval before Zen adds that marker. It does not try to choose a foreground color for arbitrary user gradients. That calculation belongs in Zen's theme engine and should ultimately be fixed in `ZenGradientGenerator.mjs` / `ZenSpace.mjs`.
+
+Because the runtime script is not from the official Sine store, Sine may require **Settings → Sine → Allow unsafe JavaScript** to be enabled. Enable it only for mods you trust, then restart Zen.
