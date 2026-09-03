@@ -2,7 +2,7 @@
 // @name           sidebar-theme-sync.uc.js
 // @description    Syncs Zen default sidebar text colors with system appearance.
 // @author         876380496
-// @version        1.5.0
+// @version        1.6.0
 // @include        main
 // @grant          none
 // ==/UserScript==
@@ -29,6 +29,8 @@
     "--tab-selected-color-scheme",
     "color",
     "color-scheme",
+    "background",
+    "background-color",
     "fill",
   ];
   const originals = new WeakMap();
@@ -65,6 +67,8 @@
       ),
       computedColor: computed.color,
       computedFill: computed.fill,
+      computedBackgroundColor: computed.backgroundColor,
+      computedBackgroundImage: computed.backgroundImage,
       colorScheme: computed.colorScheme,
     };
   }
@@ -161,7 +165,8 @@
           "#zen-sidebar-top-buttons toolbarbutton, " +
           "#zen-sidebar-foot-buttons toolbarbutton, zen-workspace toolbarbutton, " +
           "#zen-sidebar-top-buttons .toolbarbutton-text, " +
-          "#zen-sidebar-foot-buttons .toolbarbutton-text"
+          "#zen-sidebar-foot-buttons .toolbarbutton-text, " +
+          "#urlbar .urlbar-background, #zen-workspaces-button > toolbarbutton"
       ),
     ]
       .filter(Boolean)
@@ -183,6 +188,8 @@
       browser: describe(document.querySelector("#browser")),
       navigatorToolbox: describe(document.querySelector("#navigator-toolbox")),
       tabStrip: describe(document.querySelector("#tabbrowser-tabs")),
+      urlbarBackground: describe(document.querySelector("#urlbar .urlbar-background")),
+      workspaceButton: describe(document.querySelector("#zen-workspaces-button > toolbarbutton")),
       workspaceCount: workspaces.length,
       tabCount: tabs.length,
       topToolbar: describe(document.querySelector("#zen-sidebar-top-buttons")),
@@ -216,19 +223,36 @@
     const colorScheme = darkModeQuery.matches ? "dark" : "light";
     root.setAttribute(marker, colorScheme);
 
-    // Zen's background follows light-dark(), but its browser/workspace/tab
-    // color-scheme can remain stale after macOS changes. Set the scheme on
-    // every layer that participates in sidebar and tab rendering.
+    // Zen's background follows light-dark(), but its background variables are
+    // declared above the elements that use them. Sync the variables on the
+    // actual toolbar containers as well as the color-scheme, otherwise the
+    // text can change while the search box/workspace tiles keep stale tinting.
+    const elementBackground = `color-mix(in oklch, ${foreground} ${darkModeQuery.matches ? 15 : 8}%, transparent)`;
+    const elementHoverBackground = darkModeQuery.matches
+      ? "rgba(255, 255, 255, 0.1)"
+      : "rgba(0, 0, 0, 0.08)";
     for (const element of [
-      root,
       document.querySelector("#browser"),
       document.querySelector("#navigator-toolbox"),
+      document.querySelector("#TabsToolbar"),
+      document.querySelector("#nav-bar"),
       document.querySelector("#tabbrowser-tabs"),
+      document.querySelector("#zen-sidebar-top-buttons"),
+      document.querySelector("#zen-sidebar-foot-buttons"),
+      document.querySelector("#urlbar"),
+      document.querySelector("#zen-workspaces-button"),
     ].filter(Boolean)) {
       setImportant(element, "color-scheme", colorScheme);
       setImportant(element, "--toolbar-color-scheme", colorScheme);
       setImportant(element, "--tab-selected-color-scheme", colorScheme);
+      setImportant(element, "--toolbox-textcolor", foreground);
+      setImportant(element, "--toolbar-color", foreground);
+      setImportant(element, "--zen-toolbar-element-bg", elementBackground);
+      setImportant(element, "--zen-toolbar-element-bg-hover", elementHoverBackground);
     }
+    setImportant(root, "color-scheme", colorScheme);
+    setImportant(root, "--toolbar-color-scheme", colorScheme);
+    setImportant(root, "--tab-selected-color-scheme", colorScheme);
 
     for (const workspace of document.querySelectorAll("zen-workspace")) {
       setImportant(workspace, "color-scheme", colorScheme);
@@ -244,7 +268,8 @@
       setImportant(workspace, "color", foreground);
 
       for (const tab of workspace.querySelectorAll(
-        ".tabbrowser-tab, .tab-content, .tab-label, .tab-text, .zen-tab-sublabel"
+        ".tabbrowser-tab, .tab-content, .tab-label-container, .tab-label, " +
+          ".tab-text, .zen-tab-sublabel"
       )) {
         setImportant(tab, "color-scheme", colorScheme);
         setImportant(tab, "--toolbar-color-scheme", colorScheme);
@@ -258,6 +283,21 @@
         setImportant(button, "color", foreground);
         setImportant(button, "fill", foreground);
       }
+    }
+
+    const urlbarBackground = document.querySelector("#urlbar .urlbar-background");
+    if (urlbarBackground) {
+      setImportant(urlbarBackground, "color-scheme", colorScheme);
+      setImportant(urlbarBackground, "--zen-toolbar-element-bg", elementBackground);
+      setImportant(urlbarBackground, "background", elementBackground);
+    }
+
+    for (const button of document.querySelectorAll(
+      "#zen-workspaces-button > toolbarbutton"
+    )) {
+      setImportant(button, "color-scheme", colorScheme);
+      setImportant(button, "--zen-toolbar-element-bg", elementBackground);
+      setImportant(button, "background-color", elementBackground);
     }
 
     for (const element of document.querySelectorAll(

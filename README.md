@@ -10,7 +10,7 @@ Zen's default workspace background uses declarative `light-dark()` colors, but t
 - dark appearance: light text
 - private and unsynced windows: left unchanged
 
-The mod uses CSS plus a small Sine `.uc.js` runtime script. The script runs only in Zen's main browser window and does not modify browser application files. The runtime synchronizer also forces the light/dark `color-scheme` on the browser, toolbox, workspace, tab strip, and tab content so Zen's `light-dark()` and selected-tab rules use the same appearance as macOS.
+The mod uses CSS plus a small Sine `.uc.js` runtime script. The script runs only in Zen's main browser window and does not modify browser application files. The runtime synchronizer also forces the light/dark `color-scheme` on the browser, toolbox, workspace, tab strip, and tab content so Zen's `light-dark()` and selected-tab rules use the same appearance as macOS. It additionally reapplies the sidebar element background used by the URL bar and workspace buttons.
 
 ## Installation
 
@@ -28,6 +28,6 @@ For local testing, Zen's current importer sends imported IDs to the official the
 
 ## Limitations
 
-The runtime synchronizer targets normal Zen windows. It deliberately ignores private and unsynced windows, where Zen intentionally uses fixed colors. It uses the current system appearance as the foreground source because Zen's `zen-should-be-dark-mode` marker can remain stale during macOS theme changes. It also watches and corrects the related `color-scheme` values and tab-content variables after Zen rewrites them.
+The runtime synchronizer targets normal Zen windows. It deliberately ignores private and unsynced windows, where Zen intentionally uses fixed colors. It uses the current system appearance as the foreground source because Zen's `zen-should-be-dark-mode` marker can remain stale during macOS theme changes. It also watches and corrects the related `color-scheme`, background variables, and tab-content values after Zen rewrites them.
 
 Because the runtime script is not from the official Sine store, Sine may require **Settings → Sine → Allow unsafe JavaScript** to be enabled. Enable it only for mods you trust, then restart Zen.
