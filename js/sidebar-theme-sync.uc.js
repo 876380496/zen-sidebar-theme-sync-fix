@@ -2,7 +2,7 @@
 // @name           sidebar-theme-sync.uc.js
 // @description    Syncs Zen default sidebar text colors with system appearance.
 // @author         876380496
-// @version        1.4.0
+// @version        1.5.0
 // @include        main
 // @grant          none
 // ==/UserScript==
@@ -25,7 +25,10 @@
     "--toolbox-textcolor",
     "--toolbar-color",
     "--tab-selected-textcolor",
+    "--toolbar-color-scheme",
+    "--tab-selected-color-scheme",
     "color",
+    "color-scheme",
     "fill",
   ];
   const originals = new WeakMap();
@@ -116,6 +119,12 @@
     if (!element?.style) {
       return;
     }
+    if (
+      element.style.getPropertyValue(property) === value &&
+      element.style.getPropertyPriority(property) === "important"
+    ) {
+      return;
+    }
     remember(element);
     element.style.setProperty(property, value, "important");
   }
@@ -137,16 +146,25 @@
   }
 
   function clearAppliedStyles() {
-    document
-      .querySelectorAll(
+    [
+      root,
+      document.querySelector("#browser"),
+      document.querySelector("#navigator-toolbox"),
+      document.querySelector("#tabbrowser-tabs"),
+      ...document.querySelectorAll(
         "zen-workspace, zen-workspace .tabbrowser-tab, zen-workspace .tab-content, " +
-          "zen-workspace .tab-label, zen-workspace .tab-text, " +
-          "zen-workspace .zen-tab-sublabel, #zen-sidebar-top-buttons, " +
-          "#zen-sidebar-foot-buttons, #zen-sidebar-top-buttons toolbarbutton, " +
+          "zen-workspace .tab-label-container, zen-workspace .tab-label, " +
+          "zen-workspace .tab-text, zen-workspace .zen-tab-sublabel, " +
+          ".zen-current-workspace-indicator, " +
+          ".zen-current-workspace-indicator .zen-current-workspace-indicator-name, " +
+          "#zen-sidebar-top-buttons, #zen-sidebar-foot-buttons, " +
+          "#zen-sidebar-top-buttons toolbarbutton, " +
           "#zen-sidebar-foot-buttons toolbarbutton, zen-workspace toolbarbutton, " +
           "#zen-sidebar-top-buttons .toolbarbutton-text, " +
           "#zen-sidebar-foot-buttons .toolbarbutton-text"
-      )
+      ),
+    ]
+      .filter(Boolean)
       .forEach(restore);
     root.removeAttribute(marker);
   }
@@ -162,6 +180,9 @@
       mediaLight: window.matchMedia("(prefers-color-scheme: light)").matches,
       rootAttributes: attributes(root),
       rootComputed: describe(root),
+      browser: describe(document.querySelector("#browser")),
+      navigatorToolbox: describe(document.querySelector("#navigator-toolbox")),
+      tabStrip: describe(document.querySelector("#tabbrowser-tabs")),
       workspaceCount: workspaces.length,
       tabCount: tabs.length,
       topToolbar: describe(document.querySelector("#zen-sidebar-top-buttons")),
@@ -192,9 +213,27 @@
       ? "rgba(255, 255, 255, 0.9)"
       : "rgb(32, 33, 36)";
 
-    root.setAttribute(marker, darkModeQuery.matches ? "dark" : "light");
+    const colorScheme = darkModeQuery.matches ? "dark" : "light";
+    root.setAttribute(marker, colorScheme);
+
+    // Zen's background follows light-dark(), but its browser/workspace/tab
+    // color-scheme can remain stale after macOS changes. Set the scheme on
+    // every layer that participates in sidebar and tab rendering.
+    for (const element of [
+      root,
+      document.querySelector("#browser"),
+      document.querySelector("#navigator-toolbox"),
+      document.querySelector("#tabbrowser-tabs"),
+    ].filter(Boolean)) {
+      setImportant(element, "color-scheme", colorScheme);
+      setImportant(element, "--toolbar-color-scheme", colorScheme);
+      setImportant(element, "--tab-selected-color-scheme", colorScheme);
+    }
 
     for (const workspace of document.querySelectorAll("zen-workspace")) {
+      setImportant(workspace, "color-scheme", colorScheme);
+      setImportant(workspace, "--toolbar-color-scheme", colorScheme);
+      setImportant(workspace, "--tab-selected-color-scheme", colorScheme);
       for (const property of [
         "--toolbox-textcolor",
         "--toolbar-color",
@@ -207,14 +246,27 @@
       for (const tab of workspace.querySelectorAll(
         ".tabbrowser-tab, .tab-content, .tab-label, .tab-text, .zen-tab-sublabel"
       )) {
+        setImportant(tab, "color-scheme", colorScheme);
+        setImportant(tab, "--toolbar-color-scheme", colorScheme);
+        setImportant(tab, "--tab-selected-color-scheme", colorScheme);
         setImportant(tab, "--tab-selected-textcolor", foreground);
         setImportant(tab, "color", foreground);
       }
 
       for (const button of workspace.querySelectorAll("toolbarbutton")) {
+        setImportant(button, "color-scheme", colorScheme);
         setImportant(button, "color", foreground);
         setImportant(button, "fill", foreground);
       }
+    }
+
+    for (const element of document.querySelectorAll(
+      ".zen-current-workspace-indicator, " +
+        ".zen-current-workspace-indicator .zen-current-workspace-indicator-name"
+    )) {
+      setImportant(element, "color-scheme", colorScheme);
+      setImportant(element, "color", foreground);
+      setImportant(element, "fill", foreground);
     }
 
     for (const selector of [
@@ -225,6 +277,9 @@
       if (!toolbar) {
         continue;
       }
+      setImportant(toolbar, "color-scheme", colorScheme);
+      setImportant(toolbar, "--toolbar-color-scheme", colorScheme);
+      setImportant(toolbar, "--tab-selected-color-scheme", colorScheme);
       setImportant(toolbar, "--toolbox-textcolor", foreground);
       setImportant(toolbar, "--toolbar-color", foreground);
       setImportant(toolbar, "color", foreground);
@@ -232,6 +287,7 @@
       for (const element of toolbar.querySelectorAll(
         "toolbarbutton, .toolbarbutton-text, label, image"
       )) {
+        setImportant(element, "color-scheme", colorScheme);
         setImportant(element, "color", foreground);
         setImportant(element, "fill", foreground);
       }
@@ -271,6 +327,7 @@
         mutation.type === "childList" ||
         (mutation.type === "attributes" &&
           [
+            "style",
             "zen-default-theme",
             "zen-should-be-dark-mode",
             "zen-unsynced-window",
@@ -287,6 +344,7 @@
     subtree: true,
     attributes: true,
     attributeFilter: [
+      "style",
       "zen-default-theme",
       "zen-should-be-dark-mode",
       "zen-unsynced-window",
