@@ -1,5 +1,5 @@
 /*
- * Zen Automatic Sidebar Text Sync Fix v1.5
+ * Zen Automatic Sidebar Text Sync Fix v1.8
  *
  * Zen updates the default sidebar background through color-scheme/light-dark,
  * but can leave --toolbox-textcolor and --tab-selected-textcolor as stale
@@ -8,7 +8,9 @@
  *
  * The stylesheet is intentionally not wrapped in -moz-pref(). Disabling the
  * Mod in Sine removes the stylesheet entirely, and avoiding a second pref
- * condition makes this workaround reliable as a user stylesheet.
+ * condition makes this workaround reliable as a user stylesheet. Custom
+ * gradient themes are left to Zen's own theme renderer; the runtime script
+ * asks Zen to refresh them when the active window scheme changes.
  */
 
 /* Light system appearance. */
@@ -21,28 +23,6 @@
   :root[zen-default-theme="true"] {
     --zen-sidebar-sync-foreground: rgba(255, 255, 255, 0.9);
   }
-}
-
-/*
- * The runtime marker is authoritative after macOS changes. It also avoids
- * relying on Zen's stale zen-should-be-dark-mode attribute.
- */
-:root[zen-sidebar-theme-sync-fix="light"] {
-  --zen-sidebar-sync-foreground: rgb(32, 33, 36);
-  --zen-sidebar-sync-element-bg: color-mix(in oklch, rgb(32, 33, 36) 8%, transparent);
-  --zen-sidebar-sync-element-bg-hover: rgba(0, 0, 0, 0.08);
-  color-scheme: light !important;
-  --toolbar-color-scheme: light !important;
-  --tab-selected-color-scheme: light !important;
-}
-
-:root[zen-sidebar-theme-sync-fix="dark"] {
-  --zen-sidebar-sync-foreground: rgba(255, 255, 255, 0.9);
-  --zen-sidebar-sync-element-bg: color-mix(in oklch, rgba(255, 255, 255, 0.9) 15%, transparent);
-  --zen-sidebar-sync-element-bg-hover: rgba(255, 255, 255, 0.1);
-  color-scheme: dark !important;
-  --toolbar-color-scheme: dark !important;
-  --tab-selected-color-scheme: dark !important;
 }
 
 /*
@@ -65,29 +45,6 @@
   --tab-selected-color-scheme: inherit !important;
   color: var(--zen-sidebar-sync-foreground) !important;
   color-scheme: inherit !important;
-}
-
-/*
- * These are the actual background layers marked in the report. Setting both
- * the source variables and the rendered elements avoids stale light-dark()
- * results when Zen keeps an old scheme on a child XUL element.
- */
-:root[zen-sidebar-theme-sync-fix] #urlbar,
-:root[zen-sidebar-theme-sync-fix] #urlbar .urlbar-background,
-:root[zen-sidebar-theme-sync-fix] #zen-workspaces-button,
-:root[zen-sidebar-theme-sync-fix] #zen-workspaces-button > toolbarbutton {
-  --zen-toolbar-element-bg: var(--zen-sidebar-sync-element-bg) !important;
-  --zen-toolbar-element-bg-hover: var(--zen-sidebar-sync-element-bg-hover) !important;
-  --toolbarbutton-background-color-hover: var(--zen-sidebar-sync-element-bg-hover) !important;
-}
-
-:root[zen-sidebar-theme-sync-fix] #urlbar .urlbar-background {
-  background: var(--zen-sidebar-sync-element-bg) !important;
-  background-color: var(--zen-sidebar-sync-element-bg) !important;
-}
-
-:root[zen-sidebar-theme-sync-fix] #zen-workspaces-button > toolbarbutton {
-  background-color: var(--zen-sidebar-sync-element-bg) !important;
 }
 
 /* Firefox tab rules use --tab-selected-textcolor on the tab-content. */

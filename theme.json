@@ -7,7 +7,7 @@
   "readme": "https://raw.githubusercontent.com/876380496/zen-sidebar-theme-sync-fix/main/README.md",
   "preferences": "https://raw.githubusercontent.com/876380496/zen-sidebar-theme-sync-fix/main/preferences.json",
   "author": "876380496",
-  "version": "1.6.0",
+  "version": "1.8.0",
   "scripts": {
     "js/sidebar-theme-sync.uc.js": {
       "name": "Runtime theme synchronizer",
@@ -18,5 +18,5 @@
   "fork": ["zen"],
   "tags": ["sidebar", "theme", "macos", "dark-mode", "accessibility"],
   "createdAt": "2026-09-03",
-  "updatedAt": "2026-09-04T02:30:00Z"
+  "updatedAt": "2026-09-04T03:30:00Z"
 }

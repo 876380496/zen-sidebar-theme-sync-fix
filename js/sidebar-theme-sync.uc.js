@@ -2,7 +2,7 @@
 // @name           sidebar-theme-sync.uc.js
 // @description    Syncs Zen default sidebar text colors with system appearance.
 // @author         876380496
-// @version        1.6.0
+// @version        1.8.0
 // @include        main
 // @grant          none
 // ==/UserScript==
@@ -14,6 +14,7 @@
   const root = document.documentElement;
   const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const marker = "zen-sidebar-theme-sync-fix";
+  const windowSchemePref = "zen.view.window.scheme";
   const logPath = PathUtils.join(
     PathUtils.profileDir,
     "chrome",
@@ -91,17 +92,50 @@
       .catch(error => console.error("[SidebarThemeSyncFix] Log queue error:", error));
   }
 
+  function activeWorkspace() {
+    return window.gZenWorkspaces?.getActiveWorkspace?.() || null;
+  }
+
+  function isAutomaticWorkspaceTheme() {
+    const workspace = activeWorkspace();
+    const colors = workspace?.theme?.gradientColors;
+    if (Array.isArray(colors)) {
+      return colors.length === 0;
+    }
+    return root.getAttribute("zen-default-theme") === "true";
+  }
+
   function shouldSyncSidebar() {
-    // zen-should-be-dark-mode is not a reliable signal that the user has a
-    // custom workspace theme. Zen can leave it set while the system theme
-    // changes, which is the exact case this Mod fixes.
-    //
-    // Do not touch private or unsynced windows, where Zen intentionally uses
-    // a fixed foreground color.
+    // Custom gradients have their own scheme-aware foreground and background
+    // calculation in ZenGradientGenerator. Leave their styles untouched.
     return (
       !root.hasAttribute("zen-unsynced-window") &&
-      !root.hasAttribute("zen-private-window")
+      !root.hasAttribute("zen-private-window") &&
+      isAutomaticWorkspaceTheme()
     );
+  }
+
+  function effectiveDarkMode() {
+    switch (Services.prefs.getIntPref("zen.view.window.scheme", 2)) {
+      case 0:
+        return true;
+      case 1:
+        return false;
+      default:
+        return darkModeQuery.matches;
+    }
+  }
+
+  function themeState() {
+    const dark = effectiveDarkMode();
+    return {
+      dark,
+      foreground: dark
+        ? "rgba(255, 255, 255, 0.9)"
+        : "rgb(32, 33, 36)",
+      source: "zen-default-theme",
+      windowScheme: Services.prefs.getIntPref("zen.view.window.scheme", 2),
+    };
   }
 
   function remember(element) {
@@ -185,6 +219,7 @@
       mediaLight: window.matchMedia("(prefers-color-scheme: light)").matches,
       rootAttributes: attributes(root),
       rootComputed: describe(root),
+      themeState: themeState(),
       browser: describe(document.querySelector("#browser")),
       navigatorToolbox: describe(document.querySelector("#navigator-toolbox")),
       tabStrip: describe(document.querySelector("#tabbrowser-tabs")),
@@ -206,32 +241,33 @@
     updateQueued = false;
 
     if (!shouldSyncSidebar()) {
+      const wasMarked = root.hasAttribute(marker);
+      // Remove styles previously applied by this Mod. Zen itself owns the
+      // scheme-aware refresh of custom gradient themes.
       clearAppliedStyles();
-      const state = stateSnapshot(`${reason}:skipped-special-window`);
+      const state = stateSnapshot(
+        `${reason}:${wasMarked ? "skipped-special-window" : "skipped-custom-theme"}`
+      );
       const serialized = JSON.stringify(state);
       if (serialized !== lastState) {
         lastState = serialized;
-        writeLog("skip-special-window", state);
+        writeLog(
+          wasMarked ? "skip-special-window" : "skip-custom-theme",
+          state
+        );
       }
       return;
     }
 
-    const foreground = darkModeQuery.matches
-      ? "rgba(255, 255, 255, 0.9)"
-      : "rgb(32, 33, 36)";
-
-    const colorScheme = darkModeQuery.matches ? "dark" : "light";
+    const currentTheme = themeState();
+    const foreground = currentTheme.foreground;
+    const colorScheme = currentTheme.dark ? "dark" : "light";
     root.setAttribute(marker, colorScheme);
 
-    // Zen's background follows light-dark(), but its background variables are
-    // declared above the elements that use them. Sync the variables on the
-    // actual toolbar containers as well as the color-scheme, otherwise the
-    // text can change while the search box/workspace tiles keep stale tinting.
-    const elementBackground = `color-mix(in oklch, ${foreground} ${darkModeQuery.matches ? 15 : 8}%, transparent)`;
-    const elementHoverBackground = darkModeQuery.matches
-      ? "rgba(255, 255, 255, 0.1)"
-      : "rgba(0, 0, 0, 0.08)";
+    // Keep Zen's own light-dark() background formulas intact. The Mod only
+    // fixes stale foreground values and color-scheme for the default theme.
     for (const element of [
+      root,
       document.querySelector("#browser"),
       document.querySelector("#navigator-toolbox"),
       document.querySelector("#TabsToolbar"),
@@ -239,20 +275,13 @@
       document.querySelector("#tabbrowser-tabs"),
       document.querySelector("#zen-sidebar-top-buttons"),
       document.querySelector("#zen-sidebar-foot-buttons"),
-      document.querySelector("#urlbar"),
-      document.querySelector("#zen-workspaces-button"),
     ].filter(Boolean)) {
       setImportant(element, "color-scheme", colorScheme);
       setImportant(element, "--toolbar-color-scheme", colorScheme);
       setImportant(element, "--tab-selected-color-scheme", colorScheme);
       setImportant(element, "--toolbox-textcolor", foreground);
       setImportant(element, "--toolbar-color", foreground);
-      setImportant(element, "--zen-toolbar-element-bg", elementBackground);
-      setImportant(element, "--zen-toolbar-element-bg-hover", elementHoverBackground);
     }
-    setImportant(root, "color-scheme", colorScheme);
-    setImportant(root, "--toolbar-color-scheme", colorScheme);
-    setImportant(root, "--tab-selected-color-scheme", colorScheme);
 
     for (const workspace of document.querySelectorAll("zen-workspace")) {
       setImportant(workspace, "color-scheme", colorScheme);
@@ -283,21 +312,6 @@
         setImportant(button, "color", foreground);
         setImportant(button, "fill", foreground);
       }
-    }
-
-    const urlbarBackground = document.querySelector("#urlbar .urlbar-background");
-    if (urlbarBackground) {
-      setImportant(urlbarBackground, "color-scheme", colorScheme);
-      setImportant(urlbarBackground, "--zen-toolbar-element-bg", elementBackground);
-      setImportant(urlbarBackground, "background", elementBackground);
-    }
-
-    for (const button of document.querySelectorAll(
-      "#zen-workspaces-button > toolbarbutton"
-    )) {
-      setImportant(button, "color-scheme", colorScheme);
-      setImportant(button, "--zen-toolbar-element-bg", elementBackground);
-      setImportant(button, "background-color", elementBackground);
     }
 
     for (const element of document.querySelectorAll(
@@ -352,12 +366,15 @@
 
   const onSystemColorSchemeChange = () =>
     scheduleUpdate("system-color-scheme-change");
+  const onWindowSchemeChange = () =>
+    scheduleUpdate("zen-window-scheme-change");
   const onTabOpen = () => scheduleUpdate("tab-open");
   const onTabSelect = () => scheduleUpdate("tab-select");
 
   writeLog("script-start", stateSnapshot("script-start"));
 
   darkModeQuery.addEventListener("change", onSystemColorSchemeChange);
+  Services.prefs.addObserver("zen.view.window.scheme", onWindowSchemeChange);
   root.addEventListener("TabOpen", onTabOpen, true);
   root.addEventListener("TabSelect", onTabSelect, true);
 
@@ -404,6 +421,7 @@
     "unload",
     () => {
       darkModeQuery.removeEventListener("change", onSystemColorSchemeChange);
+      Services.prefs.removeObserver("zen.view.window.scheme", onWindowSchemeChange);
       root.removeEventListener("TabOpen", onTabOpen, true);
       root.removeEventListener("TabSelect", onTabSelect, true);
       observer.disconnect();
